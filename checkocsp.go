@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
@@ -35,6 +36,7 @@ func Run(server string) (*Message, error) {
 		err          error
 		cert         *x509.Certificate
 		ocspResponse *ocsp.Response
+		ocspServer   string
 	)
 
 	var ocspUnauthorised = []byte{0x30, 0x03, 0x0a, 0x01, 0x06}
@@ -49,19 +51,22 @@ func Run(server string) (*Message, error) {
 		return msg, err
 	}
 
-	var issuerFile, ocspServer string
+	ip, err := net.ResolveIPAddr("ip", server)
+	if err != nil {
+		msg.Question.JobStatus = "Failed"
+		msg.Question.JobMessage = "Error resolving an IP address for: " + server
+		return msg, err
+	}
+	fmt.Println("IP of server is:", ip)
 
 	if !hasPort.MatchString(server) {
 		server += ":443"
 	}
 
-	fmt.Println("fetching certificate from", server)
-
 	conn, err := tls.Dial("tcp", server, nil)
 	if err != nil {
 		msg.Question.JobStatus = "Failed"
 		msg.Question.JobMessage = "Error connecting to server:" + server
-		// msg.Question.JobError = err
 		return msg, err
 	}
 
@@ -105,7 +110,6 @@ func Run(server string) (*Message, error) {
 		}
 		ocspURLs = []string{ocspServer}
 	}
-
 	var issuer *x509.Certificate
 	for _, issuingCert := range cert.IssuingCertificateURL {
 		issuer, err = fetchRemote(issuingCert)
@@ -134,7 +138,6 @@ func Run(server string) (*Message, error) {
 	}
 
 	for _, ocspserver := range ocspURLs {
-		fmt.Println("sending OCSP request to", ocspserver)
 		msg.Answer.OCSPstapled = "No"
 		msg.Answer.OCSPServer = ocspserver
 
@@ -148,33 +151,28 @@ func Run(server string) (*Message, error) {
 		}
 
 		if err != nil {
-			// fmt.Fprintf(os.Stderr, "[!] %v\n", err)
 			msg.Answer.OCSPResponseMessage = "Unknown error OCSP lookup."
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			// fmt.Fprintln(os.Stderr, "[!] invalid OCSP response from server", ocspserver)
 			msg.Answer.OCSPResponseMessage = "invalid OCSP response from server" + ocspserver
 			continue
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			// fmt.Fprintf(os.Stderr, "[!] failed to read response body: %s\n", err)
 			msg.Answer.OCSPResponseMessage = "Failed to read response body."
 			continue
 		}
 		resp.Body.Close()
 
 		if bytes.Equal(body, ocspUnauthorised) {
-			// fmt.Fprintf(os.Stderr, "[!] OCSP request unauthorised\n")
 			msg.Answer.OCSPResponseMessage = "OCSP request unauthorised."
 			continue
 		}
 
 		if bytes.Equal(body, ocspMalformed) {
-			// fmt.Fprintf(os.Stderr, "[!] OCSP server did not understand the request\n")
 			msg.Answer.OCSPResponseMessage = "OCSP server did not understand the request."
 			continue
 		}
@@ -182,29 +180,11 @@ func Run(server string) (*Message, error) {
 		ocspResponse, err := ocsp.ParseResponse(body, issuer)
 		if err != nil {
 			msg.Answer.OCSPResponseMessage = "Invalid OCSP response from server."
-			// fmt.Fprintf(os.Stderr, "[!] invalid OCSP response from server\n")
-			// fmt.Fprintf(os.Stderr, "[!] %v\n", err)
-			// fmt.Fprintf(os.Stderr, "[!] Response is %x\n", body)
 			ioutil.WriteFile("/tmp/ocsp.bin", body, 0644)
 			continue
 		}
 
-		fmt.Println("OCSP response from", ocspserver)
 		msg.Answer.OCSPResponse = showOCSPResponse(ocspResponse, issuer)
-
-		if issuerFile != "" && ocspResponse.Certificate != nil {
-			p := &pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: ocspResponse.Certificate.Raw,
-			}
-			err = ioutil.WriteFile(issuerFile, pem.EncodeToMemory(p), 0644)
-			if err != nil {
-				msg.Question.JobStatus = "Failed"
-				msg.Question.JobMessage = "Wrote issuing certificate to: " + issuerFile
-				return msg, err
-			}
-			fmt.Println("Wrote issuing certificate to", issuerFile)
-		}
 	}
 	// Add Controls to struct
 	msg.Controls = controls
@@ -217,46 +197,32 @@ func Run(server string) (*Message, error) {
 
 func showOCSPResponse(res *ocsp.Response, issuer *x509.Certificate) *OCSPResponse {
 	OcspResp := new(OCSPResponse)
-	fmt.Printf("\tCertificate status: ")
 	switch res.Status {
 	case ocsp.Good:
-		fmt.Println("good")
 		OcspResp.CertificateStatus = "Good"
 	case ocsp.Revoked:
-		fmt.Println("revoked")
 		OcspResp.CertificateStatus = "Revoked"
 	case ocsp.ServerFailed:
-		fmt.Println("server failed")
 		OcspResp.CertificateStatus = "Server Failed"
 	case ocsp.Unknown:
-		fmt.Println("unknown")
 		OcspResp.CertificateStatus = "Unknown"
 	default:
-		fmt.Println("unknown response received from server")
 		OcspResp.CertificateStatus = "Unknown response received from server"
 	}
 
-	// fmt.Printf("\tCertificate serial number: %s\n", res.SerialNumber)
 	OcspResp.CertificateSerial = res.SerialNumber
-	// fmt.Printf("\tStatus produced at %s\n", res.ProducedAt)
 	OcspResp.TimeStatusProduced = res.ProducedAt
-	// fmt.Printf("\tCurrent update: %s\n", res.ThisUpdate)
 	OcspResp.TimeCurrentUpdate = res.ThisUpdate
-	// fmt.Printf("\tNext update: %s\n", res.NextUpdate)
 	OcspResp.TimeNextUpdate = res.NextUpdate
 
 	if res.Status == ocsp.Revoked {
-		fmt.Printf("\tCertificate revoked at %s\n", res.RevokedAt)
+		OcspResp.CertificateRevokedAt = res.RevokedAt
 	}
 
 	if issuer != nil && res.Certificate == nil {
-		fmt.Printf("\tSignature status: ")
 		if err := res.CheckSignatureFrom(issuer); err == nil {
-			fmt.Println("OK")
 			OcspResp.SignatureStatus = "OK"
 		} else {
-			fmt.Printf("bad signature on response (%v)\n", err)
-			fmt.Println("\t(maybe wrong OCSP issuer cert?)")
 			OcspResp.SignatureStatus = "Bad signature on response (maybe wrong OCSP issuer cert?)"
 		}
 	}
