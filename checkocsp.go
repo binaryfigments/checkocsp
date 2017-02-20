@@ -156,7 +156,7 @@ func Run(server string) (*Message, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			msg.Answer.OCSPResponseMessage = "invalid OCSP response from server" + ocspserver
+			msg.Answer.OCSPResponseMessage = "Invalid OCSP response from server" + ocspserver
 			continue
 		}
 
