@@ -35,13 +35,14 @@ type Answer struct {
 
 // OCSPResponse struct
 type OCSPResponse struct {
-	CertificateStatus    string    `json:"certificate_status"`
-	CertificateSerial    *big.Int  `json:"certificate_cerial"`
-	TimeStatusProduced   time.Time `json:"time_status_produced"`
-	TimeCurrentUpdate    time.Time `json:"time_current_update"`
-	TimeNextUpdate       time.Time `json:"time_next_update"`
-	SignatureStatus      string    `json:"signature_status"`
-	CertificateRevokedAt time.Time `json:"certificate_revoked_at"`
+	CertificateStatus           string    `json:"certificate_status"`
+	CertificateSerial           *big.Int  `json:"certificate_cerial"`
+	TimeStatusProduced          time.Time `json:"time_status_produced"`
+	TimeCurrentUpdate           time.Time `json:"time_current_update"`
+	TimeNextUpdate              time.Time `json:"time_next_update"`
+	SignatureStatus             string    `json:"signature_status"`
+	CertificateRevokedAt        time.Time `json:"certificate_revoked_at"`
+	CertificateRevocationReason string    `json:"certificate_revocation_reason"`
 }
 
 // Controls struct check information

@@ -217,6 +217,7 @@ func showOCSPResponse(res *ocsp.Response, issuer *x509.Certificate) *OCSPRespons
 
 	if res.Status == ocsp.Revoked {
 		OcspResp.CertificateRevokedAt = res.RevokedAt
+		OcspResp.CertificateRevocationReason = res.RevocationReason
 	}
 
 	if issuer != nil && res.Certificate == nil {
