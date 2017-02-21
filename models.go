@@ -42,7 +42,7 @@ type OCSPResponse struct {
 	TimeNextUpdate              time.Time `json:"time_next_update"`
 	SignatureStatus             string    `json:"signature_status"`
 	CertificateRevokedAt        time.Time `json:"certificate_revoked_at"`
-	CertificateRevocationReason string    `json:"certificate_revocation_reason"`
+	CertificateRevocationReason int       `json:"certificate_revocation_reason"`
 }
 
 // Controls struct check information

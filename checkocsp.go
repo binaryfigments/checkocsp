@@ -21,10 +21,6 @@ import (
 	"golang.org/x/net/idna"
 )
 
-var ocspUnauthorised = []byte{0x30, 0x03, 0x0a, 0x01, 0x06}
-var ocspMalformed = []byte{0x30, 0x03, 0x0a, 0x01, 0x01}
-var hasPort = regexp.MustCompile(`:\d+$`)
-
 // Run function for starting the check
 func Run(server string) (*Message, error) {
 	msg := new(Message)
@@ -63,7 +59,11 @@ func Run(server string) (*Message, error) {
 		server += ":443"
 	}
 
-	conn, err := tls.Dial("tcp", server, nil)
+	dialconf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	conn, err := tls.Dial("tcp", server, dialconf)
 	if err != nil {
 		msg.Question.JobStatus = "Failed"
 		msg.Question.JobMessage = "Error connecting to server:" + server
@@ -218,6 +218,20 @@ func showOCSPResponse(res *ocsp.Response, issuer *x509.Certificate) *OCSPRespons
 	if res.Status == ocsp.Revoked {
 		OcspResp.CertificateRevokedAt = res.RevokedAt
 		OcspResp.CertificateRevocationReason = res.RevocationReason
+
+		/*
+			TODO: For later
+			unspecified (0)
+			keyCompromise (1)
+			CACompromise (2)
+			affiliationChanged (3)
+			superseded (4)
+			cessationOfOperation (5)
+			certificateHold (6)
+			removeFromCRL (8)
+			privilegeWithdrawn (9)
+			AACompromise (10)
+		*/
 	}
 
 	if issuer != nil && res.Certificate == nil {
