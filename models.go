@@ -13,24 +13,23 @@ import (
 type Message struct {
 	Question Question    `json:"question"`
 	Answer   Answer      `json:"answer"`
-	Controls []*Controls `json:"controls"`
+	Controls []*Controls `json:"controls,omitempty"`
 }
 
 // Question struct for retuning what information is asked.
 type Question struct {
-	JobServer  string `json:"server"`
-	JobStatus  string `json:"status"`
-	JobMessage string `json:"message"`
-	// JobError   error     `json:"error"`
-	JobTime time.Time `json:"time"`
+	JobServer  string    `json:"server"`
+	JobStatus  string    `json:"status"`
+	JobMessage string    `json:"message"`
+	JobTime    time.Time `json:"time"`
 }
 
 // Answer struct the answer of the question.
 type Answer struct {
 	OCSPServer          string        `json:"ocspserver,omitempty"`
 	OCSPstapled         string        `json:"ocsp_stapled,omitempty"`
-	OCSPResponse        *OCSPResponse `json:"ocsp_response"`
-	OCSPResponseMessage string        `json:"ocsp_response_message"`
+	OCSPResponse        *OCSPResponse `json:"ocsp_response,omitempty"`
+	OCSPResponseMessage string        `json:"ocsp_response_message,omitempty"`
 }
 
 // OCSPResponse struct

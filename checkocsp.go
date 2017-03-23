@@ -47,13 +47,12 @@ func Run(server string) (*Message, error) {
 		return msg, err
 	}
 
-	ip, err := net.ResolveIPAddr("ip", server)
+	_, err = net.ResolveIPAddr("ip", server)
 	if err != nil {
 		msg.Question.JobStatus = "Failed"
 		msg.Question.JobMessage = "Error resolving an IP address for: " + server
 		return msg, err
 	}
-	fmt.Println("IP of server is:", ip)
 
 	if !hasPort.MatchString(server) {
 		server += ":443"
@@ -85,7 +84,6 @@ func Run(server string) (*Message, error) {
 
 	res := conn.OCSPResponse()
 	if res != nil {
-		fmt.Println("OCSP stapled response")
 		msg.Answer.OCSPstapled = "Yes"
 		ocspResponse, err = ocsp.ParseResponse(res, nil)
 		if err != nil {
@@ -102,6 +100,7 @@ func Run(server string) (*Message, error) {
 	conn.Close()
 
 	ocspURLs := cert.OCSPServer
+
 	if len(ocspURLs) == 0 {
 		if ocspServer == "" {
 			msg.Question.JobStatus = "Failed"
