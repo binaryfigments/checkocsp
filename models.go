@@ -3,6 +3,8 @@ package checkocsp
 import (
 	"math/big"
 	"time"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 /*
@@ -11,9 +13,10 @@ import (
 
 // Message struct for returning the question and the answer.
 type Message struct {
-	Question Question    `json:"question"`
-	Answer   Answer      `json:"answer"`
-	Controls []*Controls `json:"controls,omitempty"`
+	ID       bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Question Question      `json:"question"`
+	Answer   Answer        `json:"answer"`
+	Controls []*Controls   `json:"controls,omitempty"`
 }
 
 // Question struct for retuning what information is asked.
