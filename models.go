@@ -29,7 +29,7 @@ type Question struct {
 
 // Answer struct the answer of the question.
 type Answer struct {
-	OCSPServer          string        `json:"ocspserver,omitempty"`
+	OCSPServer          string        `json:"ocsp_server,omitempty"`
 	OCSPstapled         string        `json:"ocsp_stapled,omitempty"`
 	OCSPResponse        *OCSPResponse `json:"ocsp_response,omitempty"`
 	OCSPResponseMessage string        `json:"ocsp_response_message,omitempty"`
